@@ -1,0 +1,9 @@
+[Unit]
+Description=Update CloudFlare DNS
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=python3 /update.py /domains.txt
+EnvironmentFile=/.env
