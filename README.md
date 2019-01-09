@@ -7,10 +7,10 @@ based on [example_update_dynamic_dns.py](https://github.com/cloudflare/python-cl
 ## Usage
 
 ```
-cat << EOD > list.txt
+cat << EOD > domains.txt
 example.com
 a.example.com
 b.example.org
 EOD
-python3 update.py list.txt
+python3 update.py domains.txt
 ```
