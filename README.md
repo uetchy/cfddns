@@ -6,7 +6,7 @@ based on [example_update_dynamic_dns.py](https://github.com/cloudflare/python-cl
 
 ## Usage
 
-```
+```bash
 cat << EOD > domains.txt
 example.com
 a.example.com
