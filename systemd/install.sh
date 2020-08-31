@@ -4,6 +4,9 @@ ROOT_DIR=$(realpath $(dirname $0)/../)
 CONF_DIR=$ROOT_DIR/systemd
 SYSTEM_PATH=/etc/systemd/system
 
+apt-get install -y --no-install-recommends python3 python3-pip
+/usr/bin/python3 -m pip install cloudflare
+
 cat $CONF_DIR/cloudflare-ddns.service | sed "s|{{ROOT_DIR}}|$ROOT_DIR|g" >$SYSTEM_PATH/cloudflare-ddns.service
 cp $CONF_DIR/cloudflare-ddns.timer $SYSTEM_PATH/cloudflare-ddns.timer
 
