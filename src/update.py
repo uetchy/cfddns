@@ -3,7 +3,9 @@
 # at https://github.com/cloudflare/python-cloudflare
 
 import sys
-
+from datetime import datetime
+import time
+import threading
 import CloudFlare
 import requests
 
@@ -115,11 +117,14 @@ def update_fqdn(dns_name, ip_address, ip_address_type):
     update_dns(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type)
 
 
-if __name__ == '__main__':
+def main():
+    time.tzset()
+    print(datetime.now())
+
     try:
         dns_list_path = sys.argv[1]
     except IndexError:
-        exit('usage: update.py dnslist.txt')
+        exit('usage: update.py domains.txt')
 
     with open(dns_list_path) as f:
         dns_list = f.read().splitlines()
@@ -129,3 +134,9 @@ if __name__ == '__main__':
 
     for dns_name in dns_list:
         update_fqdn(dns_name, ip_address, ip_address_type)
+
+    threading.Timer(900, main).start()
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        TZ: Asia/Tokyo
+    restart: always
+    volumes:
+      - ./domains.txt:/domains
+    environment:
+      CF_API_EMAIL: ${CF_API_EMAIL}
+      CF_API_KEY: ${CF_API_KEY}
