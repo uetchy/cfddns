@@ -3,6 +3,7 @@
 # at https://github.com/cloudflare/python-cloudflare
 
 import sys
+import re
 from datetime import datetime
 import time
 import threading
@@ -89,7 +90,7 @@ def update_dns(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type):
 
 
 def update_fqdn(dns_name, ip_address, ip_address_type):
-    host_name, zone_name = dns_name.split('.', 1)
+    zone_name = re.compile("\.(?=.+\.)").split(dns_name)[-1]
     print('pending: %s' % dns_name)
 
     cf = CloudFlare.CloudFlare()

@@ -2,7 +2,7 @@ start:
 	docker-compose up -d --build
 
 stop:
-	docker-compose down --rmi local --remove-orphans
+	docker-compose down
 
 update: stop start
 
