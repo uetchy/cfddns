@@ -12,15 +12,19 @@ import CloudFlare
 import requests
 import yaml
 
+from .notification import send_notification
 
-def get_ip_address(endpoint):
+
+def get_ip_address(endpoint, logger):
     try:
         ip_address = requests.get(endpoint).text
     except Exception:
-        exit('%s failed' % endpoint)
+        logger('%s failed' % endpoint)
+        return
 
     if ip_address == '':
-        exit('%s failed' % endpoint)
+        logger('%s failed' % endpoint)
+        return
 
     if ':' in ip_address:
         ip_address_type = 'AAAA'
@@ -30,7 +34,7 @@ def get_ip_address(endpoint):
     return ip_address, ip_address_type
 
 
-def update_record(cf, zone_id, dns_name, ip_address, ip_address_type):
+def update_record(cf, zone_id, dns_name, ip_address, ip_address_type, logger):
     params = {'name': dns_name, 'match': 'all', 'type': ip_address_type}
 
     try:
@@ -38,6 +42,7 @@ def update_record(cf, zone_id, dns_name, ip_address, ip_address_type):
     except CloudFlare.exceptions.CloudFlareAPIError as e:
         exit('/zones/dns_records %s - %s - api call failed' % (dns_name, e))
     updated = False
+    should_inform = False
 
     for dns_record in dns_records:
         old_ip_address = dns_record['content']
@@ -47,12 +52,13 @@ def update_record(cf, zone_id, dns_name, ip_address, ip_address_type):
             continue
 
         if ip_address_type != old_ip_address_type:
-            print('ignored: %s %s; wrong address family' %
-                  (dns_name, old_ip_address))
+            logger('ignored: %s %s; wrong address family' %
+                   (dns_name, old_ip_address))
+            should_inform = True
             continue
 
         if ip_address == old_ip_address:
-            print('unchanged: %s %s' % (dns_name, ip_address))
+            logger('unchanged: %s %s' % (dns_name, ip_address))
             updated = True
             continue
 
@@ -69,13 +75,17 @@ def update_record(cf, zone_id, dns_name, ip_address, ip_address_type):
                                                   dns_record_id,
                                                   data=dns_record)
         except CloudFlare.exceptions.CloudFlareAPIError as e:
-            exit('/zones.dns_records.put %s %s - api call failed' %
-                 (dns_name, e))
-        print('update: %s %s -> %s' % (dns_name, old_ip_address, ip_address))
+            logger('/zones.dns_records.put %s %s - api call failed' %
+                   (dns_name, e))
+            return True
+        logger('update: %s %s -> %s' % (dns_name, old_ip_address, ip_address))
         updated = True
+        should_inform = True
 
     if updated:
-        return
+        return should_inform
+
+    should_inform = True
 
     # no exsiting dns record to update - so create dns record
     dns_record = {
@@ -86,11 +96,14 @@ def update_record(cf, zone_id, dns_name, ip_address, ip_address_type):
     try:
         dns_record = cf.zones.dns_records.post(zone_id, data=dns_record)
     except CloudFlare.exceptions.CloudFlareAPIError as e:
-        exit('/zones.dns_records.post %s %s - api call failed' % (dns_name, e))
-    print('created: %s %s' % (dns_name, ip_address))
+        logger('/zones.dns_records.post %s %s - api call failed' %
+               (dns_name, e))
+        return True
+    logger('created: %s %s' % (dns_name, ip_address))
+    return should_inform
 
 
-def update_domain(dns_name, ip_address, ip_address_type, token):
+def update_domain(dns_name, ip_address, ip_address_type, token, logger):
     zone_name = re.compile("\.(?=.+\.)").split(dns_name)[-1]
     # print('pending: %s' % dns_name)
 
@@ -100,40 +113,55 @@ def update_domain(dns_name, ip_address, ip_address_type, token):
         params = {'name': zone_name}
         zones = cf.zones.get(params=params)
     except CloudFlare.exceptions.CloudFlareAPIError as e:
-        exit('/zones %s - api call failed. check if token is set' % e)
+        logger('/zones %s - api call failed. check if token is set' % e)
+        return True
     except Exception as e:
-        exit('/zones.get - %s - api call failed' % e)
+        logger('/zones.get - %s - api call failed' % e)
+        return True
 
     if len(zones) == 0:
-        exit('/zones.get - %s - zone not found' % zone_name)
+        logger('/zones.get - %s - zone not found' % zone_name)
+        return True
 
     if len(zones) != 1:
-        exit('/zones.get - %s - api call returned {len(zones)} items' %
-             zone_name)
+        logger('/zones.get - %s - api call returned {len(zones)} items' %
+               zone_name)
+        return True
 
     zone = zones[0]
 
     zone_name = zone['name']
     zone_id = zone['id']
 
-    update_record(cf, zone_id, dns_name, ip_address, ip_address_type)
+    return update_record(cf,
+                         zone_id,
+                         dns_name,
+                         ip_address,
+                         ip_address_type,
+                         logger=logger)
 
 
-def update(dns_list, token, endpoint):
-    print('start: %s' % datetime.now())
+def update(dns_list, token, endpoint, logger):
+    logger('start: %s' % datetime.now())
 
-    ip_address, ip_address_type = get_ip_address(endpoint)
-    print('ip: %s' % ip_address)
+    ip = get_ip_address(endpoint, logger=logger)
+    if ip is None:
+        return True
 
+    ip_address, ip_address_type = ip
+    logger('ip: %s' % ip_address)
+
+    should_inform = False
     for dns_name in dns_list:
-        update_domain(
-            dns_name,
-            ip_address,
-            ip_address_type,
-            token=token,
-        )
+        changed = update_domain(dns_name,
+                                ip_address,
+                                ip_address_type,
+                                token=token,
+                                logger=logger)
+        should_inform = should_inform | changed
 
-    print('done: %s' % datetime.now())
+    logger('done: %s' % datetime.now())
+    return should_inform
 
 
 @click.command()
@@ -150,12 +178,31 @@ def main(domains, config):
     interval = conf.get('interval', 300)
     endpoint = conf.get('endpoint', "https://api.ipify.org")
     token = conf['token']
+
+    mail_enabled = False
+    notification_conf = conf.get('notification', None)
+    if notification_conf:
+        mail_from = notification_conf.get('from')
+        mail_to = notification_conf.get('to')
+        mail_enabled = notification_conf.get('enabled', False)
+
     print('interval: %s' % interval)
     print('endpoint: %s' % endpoint)
 
+    log_buffer = []
+
+    def logger(text):
+        log_buffer.append(text)
+        print(text)
+
     async def wrapper():
         while True:
-            update(dns_list, token, endpoint)
+            should_inform = update(dns_list, token, endpoint, logger=logger)
+            if should_inform and mail_enabled:
+                log = "\n".join(log_buffer)
+                send_notification(mail_from, mail_to,
+                                  "cfddns: IP address has been changed to", log)
+                log_buffer.clear()
             await asyncio.sleep(interval)
 
     loop = asyncio.get_event_loop()
