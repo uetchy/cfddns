@@ -29,6 +29,14 @@ Install `cfddns` via [AUR](https://aur.archlinux.org/packages/cfddns/).
 ```bash
 git clone https://aur.archlinux.org/cfddns.git && cd cfddns
 makepkg -si
+
+cat << EOD > /etc/cfddns/domains
+example.com
+mail.example.com
+example.org
+EOD
+
+vim /etc/cfddns/cfddns.yml # assign `token`
 ```
 
 ### Build from source
