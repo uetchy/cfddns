@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "cfddns"
-version = "0.1.0"
-description = "DDNS Updater for CloudFlare."
+version = "1.0.1"
+description = "DDNS client for CloudFlare DNS"
 license = "MIT"
 authors = ["Yasuaki Uechi <y@uechi.io>"]
 
