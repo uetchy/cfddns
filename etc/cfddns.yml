@@ -1,0 +1,3 @@
+token: "<CloudFlare API token>"
+# endpoint: "https://api.ipify.org" # (optional)
+# interval: 300 # in seconds (optional)

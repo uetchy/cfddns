@@ -9,10 +9,11 @@ import time
 import threading
 import CloudFlare
 import requests
+import click
+import yaml
 
 
-def get_ip_address():
-    endpoint = 'https://api.ipify.org'
+def get_ip_address(endpoint):
     try:
         ip_address = requests.get(endpoint).text
     except Exception:
@@ -29,7 +30,7 @@ def get_ip_address():
     return ip_address, ip_address_type
 
 
-def update_dns(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type):
+def update_zone(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type):
     params = {'name': dns_name, 'match': 'all', 'type': ip_address_type}
 
     try:
@@ -89,17 +90,17 @@ def update_dns(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type):
     print('created: %s %s' % (dns_name, ip_address))
 
 
-def update_fqdn(dns_name, ip_address, ip_address_type):
+def update_fqdn(dns_name, ip_address, ip_address_type, token):
     zone_name = re.compile("\.(?=.+\.)").split(dns_name)[-1]
-    print('pending: %s' % dns_name)
+    # print('pending: %s' % dns_name)
 
-    cf = CloudFlare.CloudFlare()
+    cf = CloudFlare.CloudFlare(token=token)
 
     try:
         params = {'name': zone_name}
         zones = cf.zones.get(params=params)
     except CloudFlare.exceptions.CloudFlareAPIError as e:
-        exit('/zones %s - api call failed' % e)
+        exit('/zones %s - api call failed. check if token is set' % e)
     except Exception as e:
         exit('/zones.get - %s - api call failed' % e)
 
@@ -115,29 +116,44 @@ def update_fqdn(dns_name, ip_address, ip_address_type):
     zone_name = zone['name']
     zone_id = zone['id']
 
-    update_dns(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type)
+    update_zone(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type)
 
 
-def main():
+@click.command()
+@click.argument('domains', type=click.File('r'))
+@click.option('--config',
+              '-c',
+              type=click.File('r'),
+              help='path to config file',
+              required=True)
+def main(domains, config):
     time.tzset()
-    print(datetime.now())
+    print('start: %s' % datetime.now())
 
-    try:
-        dns_list_path = sys.argv[1]
-    except IndexError:
-        exit('usage: update.py domains.txt')
+    dns_list = domains.read().splitlines()
+    conf = yaml.full_load(config)
+    token = conf['token']
+    endpoint = conf.get('endpoint', "https://api.ipify.org")
+    interval = conf.get('interval', 300)
 
-    with open(dns_list_path) as f:
-        dns_list = f.read().splitlines()
-
-    ip_address, ip_address_type = get_ip_address()
+    ip_address, ip_address_type = get_ip_address(endpoint)
     print('ip: %s' % ip_address)
 
     for dns_name in dns_list:
-        update_fqdn(dns_name, ip_address, ip_address_type)
+        update_fqdn(
+            dns_name,
+            ip_address,
+            ip_address_type,
+            token=token,
+        )
 
-    threading.Timer(900, main).start()
+    print('done: %s' % datetime.now())
+    print('wait: %s' % interval)
+    threading.Timer(interval, main).start()
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)
