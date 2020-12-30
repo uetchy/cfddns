@@ -2,14 +2,14 @@
 # based on examples/example_update_dynamic_dns.py
 # at https://github.com/cloudflare/python-cloudflare
 
-import sys
+import asyncio
 import re
-from datetime import datetime
 import time
-import threading
+from datetime import datetime
+
+import click
 import CloudFlare
 import requests
-import click
 import yaml
 
 
@@ -30,7 +30,7 @@ def get_ip_address(endpoint):
     return ip_address, ip_address_type
 
 
-def update_zone(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type):
+def update_record(cf, zone_id, dns_name, ip_address, ip_address_type):
     params = {'name': dns_name, 'match': 'all', 'type': ip_address_type}
 
     try:
@@ -90,7 +90,7 @@ def update_zone(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type):
     print('created: %s %s' % (dns_name, ip_address))
 
 
-def update_fqdn(dns_name, ip_address, ip_address_type, token):
+def update_domain(dns_name, ip_address, ip_address_type, token):
     zone_name = re.compile("\.(?=.+\.)").split(dns_name)[-1]
     # print('pending: %s' % dns_name)
 
@@ -116,7 +116,24 @@ def update_fqdn(dns_name, ip_address, ip_address_type, token):
     zone_name = zone['name']
     zone_id = zone['id']
 
-    update_zone(cf, zone_name, zone_id, dns_name, ip_address, ip_address_type)
+    update_record(cf, zone_id, dns_name, ip_address, ip_address_type)
+
+
+def update(dns_list, token, endpoint):
+    print('start: %s' % datetime.now())
+
+    ip_address, ip_address_type = get_ip_address(endpoint)
+    print('ip: %s' % ip_address)
+
+    for dns_name in dns_list:
+        update_domain(
+            dns_name,
+            ip_address,
+            ip_address_type,
+            token=token,
+        )
+
+    print('done: %s' % datetime.now())
 
 
 @click.command()
@@ -128,25 +145,23 @@ def update_fqdn(dns_name, ip_address, ip_address_type, token):
               required=True)
 def main(domains, config):
     time.tzset()
-    print('start: %s' % datetime.now())
-
     dns_list = domains.read().splitlines()
     conf = yaml.full_load(config)
-    token = conf['token']
-    endpoint = conf.get('endpoint', "https://api.ipify.org")
     interval = conf.get('interval', 300)
+    endpoint = conf.get('endpoint', "https://api.ipify.org")
+    token = conf['token']
+    print('interval: %s' % interval)
+    print('endpoint: %s' % endpoint)
 
-    ip_address, ip_address_type = get_ip_address(endpoint)
-    print('ip: %s' % ip_address)
+    async def wrapper():
+        while True:
+            update(dns_list, token, endpoint)
+            await asyncio.sleep(interval)
 
-    for dns_name in dns_list:
-        update_fqdn(
-            dns_name,
-            ip_address,
-            ip_address_type,
-            token=token,
-        )
+    loop = asyncio.get_event_loop()
+    task = loop.create_task(wrapper())
 
-    print('done: %s' % datetime.now())
-    print('wait: %s' % interval)
-    threading.Timer(interval, main).start()
+    try:
+        loop.run_until_complete(task)
+    except asyncio.CancelledError:
+        pass
