@@ -1,10 +1,12 @@
 [tool.poetry]
-name = "cloudflare-ddns"
+name = "cfddns"
 version = "0.1.0"
-description = ""
+description = "DDNS Updater for CloudFlare."
 license = "MIT"
 authors = ["Yasuaki Uechi <y@uechi.io>"]
-packages = [{ include = "src" }]
+
+[tool.poetry.scripts]
+cfddns = "cfddns.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.6"

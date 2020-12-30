@@ -150,10 +150,3 @@ def main(domains, config):
     print('done: %s' % datetime.now())
     print('wait: %s' % interval)
     threading.Timer(interval, main).start()
-
-
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        sys.exit(0)

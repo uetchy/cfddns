@@ -1,7 +1,7 @@
 .vscode
 .env
 .envrc
-domains.txt
+domains
 cfddns.yml
 
 # Created by https://www.gitignore.io/api/python

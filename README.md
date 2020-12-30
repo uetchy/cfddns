@@ -1,22 +1,15 @@
-# CloudFlare DDNS
+# cfddns
 
 DDNS Updater for CloudFlare.
-
-based on [example_update_dynamic_dns.py](https://github.com/cloudflare/python-cloudflare/blob/master/examples/example_update_dynamic_dns.py).
 
 ## Usage
 
 ```bash
-cat << EOD > domains.txt
+cat << EOD > domains
 example.com
-a.example.com
-b.example.org
+mail.example.com
+example.org
 EOD
-python3 src/update.py domains.txt
-```
 
-### Docker Compose
-
-```bash
-docker-compose up -d
+cfddns -c cfddns.yml domains
 ```
