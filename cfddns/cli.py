@@ -189,13 +189,13 @@ def main(domains, config):
     print('interval: %s' % interval)
     print('endpoint: %s' % endpoint)
 
-    log_buffer = []
-
-    def logger(text):
-        log_buffer.append(text)
-        print(text)
-
     async def wrapper():
+        log_buffer = []
+
+        def logger(text):
+            log_buffer.append(text)
+            print(text)
+
         while True:
             should_inform = update(dns_list, token, endpoint, logger=logger)
             if should_inform and mail_enabled:

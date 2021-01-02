@@ -3,5 +3,5 @@ token: "<CloudFlare API token>"
 # interval: 300 # in seconds (default: 300)
 # notification:
 #   enable: true # default: false
-#   from: cfddns@example.org
-#   to: mail@example.com
+#   from: cfddns@example.com
+#   to: admin@example.com

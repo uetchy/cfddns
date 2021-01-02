@@ -1,6 +1,6 @@
-import sys
 from email.mime.text import MIMEText
 from subprocess import Popen, PIPE
+
 
 def send_notification(mail_from, mail_to, subject, msg):
     msg = MIMEText(msg)
