@@ -142,7 +142,7 @@ def update_domain(dns_name, ip_address, ip_address_type, token, logger):
 
 
 def update(dns_list, token, endpoint, logger):
-    logger('start: %s' % datetime.now())
+    logger('\nstart: %s' % datetime.now())
 
     ip = get_ip_address(endpoint, logger=logger)
     if ip is None:
@@ -189,26 +189,20 @@ def main(domains, config):
     print('interval: %s' % interval)
     print('endpoint: %s' % endpoint)
 
+    log_buffer = []
+
+    def logger(text):
+        log_buffer.append(text)
+        print(text)
+
     async def wrapper():
-        log_buffer = []
-
-        def logger(text):
-            log_buffer.append(text)
-            print(text)
-
         while True:
             should_inform = update(dns_list, token, endpoint, logger=logger)
             if should_inform and mail_enabled:
                 log = "\n".join(log_buffer)
                 send_notification(mail_from, mail_to,
                                   "cfddns: IP address has been changed to", log)
-                log_buffer.clear()
+            log_buffer.clear()
             await asyncio.sleep(interval)
 
-    loop = asyncio.get_event_loop()
-    task = loop.create_task(wrapper())
-
-    try:
-        loop.run_until_complete(task)
-    except asyncio.CancelledError:
-        pass
+    asyncio.run(wrapper())
