@@ -179,12 +179,12 @@ def main(domains, config):
     endpoint = conf.get('endpoint', "https://api.ipify.org")
     token = conf['token']
 
-    mail_enabled = False
+    notification_enabled = False
     notification_conf = conf.get('notification', None)
     if notification_conf:
         mail_from = notification_conf.get('from')
         mail_to = notification_conf.get('to')
-        mail_enabled = notification_conf.get('enabled', False)
+        notification_enabled = notification_conf.get('enabled', False)
 
     print('interval: %s' % interval)
     print('endpoint: %s' % endpoint)
@@ -198,7 +198,7 @@ def main(domains, config):
     async def wrapper():
         while True:
             should_inform = update(dns_list, token, endpoint, logger=logger)
-            if should_inform and mail_enabled:
+            if should_inform and notification_enabled:
                 log = "\n".join(log_buffer)
                 send_notification(mail_from, mail_to,
                                   "cfddns: IP address has been changed to", log)

@@ -1,7 +1,7 @@
-token: "<CloudFlare API token>"
+token: "<CloudFlare API token>" # required
 # endpoint: "https://api.ipify.org" # (default: "https://api.ipify.org")
 # interval: 300 # in seconds (default: 300)
 # notification:
 #   enable: true # default: false
-#   from: cfddns@example.com
+#   from: cfddns@localhost
 #   to: admin@example.com
