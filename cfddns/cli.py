@@ -193,7 +193,7 @@ def main(domains, config):
 
     def logger(text):
         log_buffer.append(text)
-        print(text)
+        print(text, flush=True)
 
     async def wrapper():
         while True:
