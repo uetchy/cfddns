@@ -201,7 +201,7 @@ def main(domains, config):
             if should_inform and notification_enabled:
                 log = "\n".join(log_buffer)
                 send_notification(mail_from, mail_to,
-                                  "cfddns: IP address has been changed to", log)
+                                  "cfddns: IP address has been changed", log)
             log_buffer.clear()
             await asyncio.sleep(interval)
 
