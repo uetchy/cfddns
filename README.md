@@ -1,6 +1,6 @@
 # cfddns
 
-DDNS client for CloudFlare DNS.
+Dynamic DNS client for Cloudflare DNS.
 
 ## Usage
 
@@ -37,6 +37,8 @@ example.org
 EOD
 
 vim /etc/cfddns/cfddns.yml # assign `token`
+
+systemctl enable --now cfddns
 ```
 
 ### Build from source
