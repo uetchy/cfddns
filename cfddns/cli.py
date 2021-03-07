@@ -17,7 +17,7 @@ from .notification import send_notification
 
 def get_ip_address(endpoint, logger):
     try:
-        ip_address = requests.get(endpoint).text
+        ip_address = requests.get(endpoint).text.strip()
     except Exception:
         logger('%s failed' % endpoint)
         return
