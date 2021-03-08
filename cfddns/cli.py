@@ -175,8 +175,8 @@ def main(domains, config):
     time.tzset()
     dns_list = domains.read().splitlines()
     conf = yaml.full_load(config)
-    interval = conf.get('interval', 300)
-    endpoint = conf.get('endpoint', "https://api.ipify.org")
+    interval = conf.get('interval', 600)
+    endpoint = conf.get('endpoint', "https://ifconfig.co/ip")
     token = conf['token']
 
     notification_enabled = False
