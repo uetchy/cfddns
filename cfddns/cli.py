@@ -11,17 +11,26 @@ import click
 import CloudFlare
 import requests
 import yaml
+import time
 
 from .notification import send_notification
 
 
 def get_ip_address(endpoint, logger):
     try:
-        res = requests.get(endpoint)
-        if res.status_code != 200:
-            logger('%s failed' % endpoint)
+        retry_count = 3
+        while retry_count > 0:
+            res = requests.get(endpoint)
+            if res.status_code == 200:
+                ip_address = res.text.strip()
+                break
+            retry_count -= 1
+            time.sleep(5)
+
+        if retry_count == 0:
+            logger('looks like %s is unavailable' % endpoint)
             return
-        ip_address = res.text.strip()
+
     except Exception:
         logger('%s failed' % endpoint)
         return
@@ -204,7 +213,7 @@ def main(domains, config):
             should_inform = update(dns_list, token, endpoint, logger=logger)
             if should_inform and notification_enabled:
                 log = "\n".join(log_buffer)
-                                  "cfddns: IP address has been changed", log)
+                send_notification(mail_from, mail_to, "cfddns", log)
             log_buffer.clear()
             await asyncio.sleep(interval)
 
