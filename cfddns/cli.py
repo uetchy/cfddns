@@ -180,7 +180,7 @@ def main(domains, config):
     dns_list = domains.read().splitlines()
     conf = yaml.full_load(config)
     interval = conf.get('interval', 600)
-    endpoint = conf.get('endpoint', "https://ifconfig.co/ip")
+    endpoint = conf.get('endpoint', "https://api.ipify.org")
     token = conf['token']
 
     notification_enabled = False
@@ -204,7 +204,6 @@ def main(domains, config):
             should_inform = update(dns_list, token, endpoint, logger=logger)
             if should_inform and notification_enabled:
                 log = "\n".join(log_buffer)
-                send_notification(mail_from, mail_to,
                                   "cfddns: IP address has been changed", log)
             log_buffer.clear()
             await asyncio.sleep(interval)

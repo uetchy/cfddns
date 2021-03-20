@@ -1,5 +1,5 @@
 token: "<CloudFlare API token>" # required
-# endpoint: "https://ifconfig.co/ip"
+# endpoint: "https://api.ipify.org"
 # interval: 600 # in seconds
 # notification:
 #   enable: true # default: false
