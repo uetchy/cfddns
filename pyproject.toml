@@ -1,15 +1,27 @@
 [tool.poetry]
 name = "cfddns"
 version = "1.5.0"
-description = "DDNS client for CloudFlare DNS"
+description = "DDNS client for Cloudflare DNS"
 license = "MIT"
 authors = ["Yasuaki Uechi <y@uechi.io>"]
+readme = "README.md"
+homepage = "https://github.com/uetchy/cfddns"
+repository = "https://github.com/uetchy/cfddns"
+keywords = ["cloudflare", "ddns"]
+classifiers = [
+  "Environment :: Console",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "Topic :: Internet :: Name Service (DNS)",
+]
+include = ["LICENSE"]
 
 [tool.poetry.scripts]
 cfddns = "cfddns.cli:main"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = ">= 3.4"
 cloudflare = "^2.8.13"
 click = "^7.1.2"
 
