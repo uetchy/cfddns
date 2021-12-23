@@ -2,6 +2,8 @@
 
 Dynamic DNS client for Cloudflare DNS.
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/cfddns.svg)](https://repology.org/project/cfddns/versions)
+
 ## Usage
 
 ```bash
@@ -54,3 +56,10 @@ pip install cfddns
 git clone https://github.com/uetchy/cfddns.git && cd cfddns
 poetry install --build
 ```
+
+## Contribute
+
+### Tasks
+
+- Create and maintain a package of cfddns for your favorite Linux distribution
+- Report a bug
