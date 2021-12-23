@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "cfddns"
 version = "1.5.0"
-description = "DDNS client for Cloudflare DNS"
+description = "Ergonomic DDNS client for Cloudflare"
 license = "MIT"
 authors = ["Yasuaki Uechi <y@uechi.io>"]
 readme = "README.md"
@@ -21,12 +21,12 @@ include = ["LICENSE"]
 cfddns = "cfddns.cli:main"
 
 [tool.poetry.dependencies]
-python = ">= 3.4"
-cloudflare = "^2.8.13"
-click = "^7.1.2"
+python = ">= 3.6"
+cloudflare = "^2.8.15"
+click = "^8.0.3"
 
 [tool.poetry.dev-dependencies]
-yapf = "^0.30.0"
+yapf = "^0.31.0"
 
 [build-system]
 requires = ["poetry>=0.12"]

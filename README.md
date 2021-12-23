@@ -1,6 +1,6 @@
 # cfddns
 
-Dynamic DNS client for Cloudflare DNS.
+Ergonomic dynamic DNS (DDNS) client for Cloudflare.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/cfddns.svg)](https://repology.org/project/cfddns/versions)
 
@@ -16,7 +16,7 @@ EOD
 cat <<EOD > cfddns.yml
 token: "<CloudFlare API token>"
 interval: 900 # in seconds (optional)
-endpoint: "https://api.ipify.org" # (optional)
+endpoint: "https://api.ipify.org" # external ip provider (optional)
 EOD
 
 cfddns -c cfddns.yml domains
