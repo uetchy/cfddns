@@ -75,11 +75,19 @@ struct Args {
 #[derive(Debug)]
 pub struct MuxWriter {
     pub buf: Vec<String>,
+    pub should_notify: bool,
 }
 
 impl MuxWriter {
     pub fn new() -> Self {
-        Self { buf: vec![] }
+        Self {
+            buf: vec![],
+            should_notify: false,
+        }
+    }
+
+    pub fn mark(&mut self) {
+        self.should_notify = true;
     }
 
     pub fn write(&mut self, data: String) {
@@ -87,10 +95,12 @@ impl MuxWriter {
         self.buf.push(data);
     }
 
-    pub fn drain(&mut self) -> String {
+    pub fn drain(&mut self) -> (String, bool) {
         let result = self.buf.join("\n").clone();
+        let should_notify = self.should_notify;
         self.buf.clear();
-        result
+        self.should_notify = false;
+        (result, should_notify)
     }
 }
 
@@ -144,15 +154,15 @@ async fn main() -> Result<()> {
 
             println!("Started checking DNS records...");
 
-            let response: String =
+            let (response, should_notify): (String, bool) =
                 match populate_ips(&domain_list, &api_client, &endpoint, &mut writer).await {
                     Ok(()) => writer.drain(),
-                    Err(err) => format!("{}", err),
+                    Err(err) => (format!("{}", err), true),
                 };
 
             // notify the result
             if let Some(nc) = &config.notification {
-                if nc.enabled {
+                if nc.enabled && should_notify {
                     println!("Sending an email with config: {:?}", nc);
                     match send_mail(&nc.from, &nc.to, "cfddns", &response) {
                         Ok(_) => {}
@@ -203,6 +213,7 @@ async fn populate_ips<ApiClientType: ApiClient>(
             };
 
             if record_ip.ne(&global_ipv4_addr) {
+                writer.mark();
                 writer.write(format!(
                     "Updating A record for {}: {} -> {}",
                     fqdn, record_ip, global_ipv4_addr
@@ -225,6 +236,7 @@ async fn populate_ips<ApiClientType: ApiClient>(
                 writer.write(format!("Unchanged {} ({})", fqdn, record_ip));
             }
         } else {
+            writer.mark();
             writer.write(format!(
                 "Creating A record for {} ({})",
                 fqdn, global_ipv4_addr
