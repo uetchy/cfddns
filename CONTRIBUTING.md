@@ -11,3 +11,9 @@ cargo build
 ```bash
 cargo run -c ./cfddns.yml ./domains
 ```
+
+## Publish
+
+```
+cargo release --execute
+```
