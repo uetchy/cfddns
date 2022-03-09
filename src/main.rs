@@ -7,7 +7,6 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 use cloudflare::endpoints::dns::{DnsContent, DnsRecord};
-use cloudflare::endpoints::zone::Zone;
 use cloudflare::endpoints::{dns, zone};
 use cloudflare::framework::{
     async_api::{ApiClient, Client},
@@ -27,11 +26,6 @@ macro_rules! regex {
         static RE: once_cell::sync::OnceCell<regex::Regex> = once_cell::sync::OnceCell::new();
         RE.get_or_init(|| regex::Regex::new($re).unwrap())
     }};
-}
-
-#[derive(Debug, Default)]
-struct App {
-    zone_name_id_map: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,12 +72,30 @@ struct Args {
     config: PathBuf,
 }
 
+#[derive(Debug)]
+pub struct MuxWriter {
+    pub buf: Vec<String>,
+}
+
+impl MuxWriter {
+    pub fn new() -> Self {
+        Self { buf: vec![] }
+    }
+
+    pub fn write(&mut self, data: String) {
+        println!("{}", data);
+        self.buf.push(data);
+    }
+
+    pub fn drain(&mut self) -> String {
+        let result = self.buf.join("\n").clone();
+        self.buf.clear();
+        result
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut app = App {
-        ..Default::default()
-    };
-
     // parse args
     let args = Args::parse();
     let config_path = args.config;
@@ -107,9 +119,10 @@ async fn main() -> Result<()> {
     )?;
 
     // preload zone list
+    let mut zone_name_id_map: HashMap<String, String> = HashMap::new();
     let zones = list_zones(&api_client).await?;
     for zone in zones {
-        app.zone_name_id_map.insert(zone.name, zone.id);
+        zone_name_id_map.insert(zone.name, zone.id);
     }
 
     // load domain list
@@ -117,13 +130,11 @@ async fn main() -> Result<()> {
         .iter()
         .map(|x| {
             let (fqdn, zone_name) = split_hostname(x).unwrap();
-            (
-                fqdn,
-                app.zone_name_id_map.get(&zone_name).unwrap().to_owned(),
-            )
+            (fqdn, zone_name_id_map.get(&zone_name).unwrap().to_owned())
         })
         .collect::<Vec<(String, String)>>();
-    println!("{:?}", domain_list);
+
+    let mut writer = MuxWriter::new();
 
     let forever = task::spawn(async move {
         let mut interval = time::interval(Duration::from_secs(interval));
@@ -131,18 +142,20 @@ async fn main() -> Result<()> {
         loop {
             interval.tick().await;
 
-            println!("Running update script...");
+            println!("Started checking DNS records...");
 
-            let result = populate_ips(&mut app, &domain_list, &api_client, &endpoint).await;
-
-            println!("{:?}", result);
+            let response: String =
+                match populate_ips(&domain_list, &api_client, &endpoint, &mut writer).await {
+                    Ok(()) => writer.drain(),
+                    Err(err) => format!("{}", err),
+                };
 
             // notify the result
             if let Some(nc) = &config.notification {
                 if nc.enabled {
-                    println!("{:?}", nc);
-                    match send_mail(&nc.from, &nc.to, "cfddns", "completed") {
-                        Ok(res) => println!("{}", res.message().collect::<Vec<&str>>().join("\n")),
+                    println!("Sending an email with config: {:?}", nc);
+                    match send_mail(&nc.from, &nc.to, "cfddns", &response) {
+                        Ok(_) => {}
                         Err(err) => println!("{}", err),
                     }
                 }
@@ -156,52 +169,66 @@ async fn main() -> Result<()> {
 }
 
 async fn populate_ips<ApiClientType: ApiClient>(
-    app: &mut App,
     domain_list: &Vec<(String, String)>,
     api_client: &ApiClientType,
     endpoint: &str,
+    writer: &mut MuxWriter,
 ) -> Result<()> {
     let global_ipv4_addr = get_global_ipv4_addr(&endpoint).await?;
-    println!("IP: {}", global_ipv4_addr);
+    writer.write(format!("Current IP address: {}", global_ipv4_addr));
 
+    // Build zone id cache
     let unique_zone_ids: HashSet<String> = domain_list.iter().map(|x| x.1.clone()).collect();
-    let mut fqdn_id_map: HashMap<String, String> = HashMap::new();
+    let mut fqdn_record_cache: HashMap<String, DnsRecord> = HashMap::new();
     for zone_id in unique_zone_ids {
         let records = list_dns_records(&zone_id, api_client).await?;
         for record in records.into_iter().filter(|x| match x.content {
             DnsContent::A { content: _ } => true,
             _ => false,
         }) {
-            fqdn_id_map.insert(record.name, record.id);
+            fqdn_record_cache.insert(record.name.clone(), record);
         }
     }
 
     for (fqdn, zone_id) in domain_list {
-        println!("{}", fqdn);
-
-        let id = fqdn_id_map
+        let record = fqdn_record_cache
             .iter()
             .find(|x| x.0.eq(fqdn))
             .and_then(|x| Some(x.1));
 
-        if let Some(id) = id {
-            println!("Updating the record ({}) on zone {}", id, zone_id);
-            update_dns_record(
-                zone_id,
-                id,
-                dns::UpdateDnsRecordParams {
-                    ttl: Some(1),
-                    proxied: Some(false),
-                    name: fqdn,
-                    content: dns::DnsContent::A {
-                        content: global_ipv4_addr,
+        if let Some(record) = record {
+            let record_ip = match record.content {
+                DnsContent::A { content: ip } => ip,
+                _ => bail!("Invalid content type"),
+            };
+
+            if record_ip.ne(&global_ipv4_addr) {
+                writer.write(format!(
+                    "Updating A record for {}: {} -> {}",
+                    fqdn, record_ip, global_ipv4_addr
+                ));
+                update_dns_record(
+                    zone_id,
+                    &record.id,
+                    dns::UpdateDnsRecordParams {
+                        ttl: Some(1),
+                        proxied: Some(false),
+                        name: fqdn,
+                        content: dns::DnsContent::A {
+                            content: global_ipv4_addr,
+                        },
                     },
-                },
-                api_client,
-            )
-            .await?;
+                    api_client,
+                )
+                .await?;
+            } else {
+                writer.write(format!("Unchanged {} ({})", fqdn, record_ip));
+            }
         } else {
-            println!("Creating a DNS record on zone {}", zone_id);
+            writer.write(format!(
+                "Creating A record for {} ({})",
+                fqdn, global_ipv4_addr
+            ));
             create_dns_record(
                 zone_id,
                 dns::CreateDnsRecordParams {
