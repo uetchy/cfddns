@@ -1,11 +1,13 @@
 # Contribution Guide
 
-## Dev
+## Build
 
 ```bash
-poetry install
+cargo build
+```
 
-python3 -m cfddns <domains> -c <cfddns.yml>
-# or
-poetry run cfddns <domains> -c <cfddns.yml>
+## Run
+
+```bash
+cargo run -c ./cfddns.yml ./domains
 ```
