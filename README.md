@@ -1,8 +1,14 @@
 # cfddns
 
-Dynamic DNS client for Cloudflare DNS.
+Yet another DDNS client for Cloudflare written in Rust.
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/cfddns.svg)](https://repology.org/project/cfddns/versions)
 
 ## Usage
+
+```
+cfddns -c <config.yml> <domain-list.txt>
+```
 
 ```bash
 cat << EOD > domains
@@ -14,7 +20,7 @@ EOD
 cat <<EOD > cfddns.yml
 token: "<CloudFlare API token>"
 interval: 900 # in seconds (optional)
-endpoint: "https://api.ipify.org" # (optional)
+endpoint: "https://api.ipify.org" # external ip provider (optional)
 EOD
 
 cfddns -c cfddns.yml domains
@@ -24,33 +30,36 @@ cfddns -c cfddns.yml domains
 
 ### Arch Linux
 
-Install `cfddns` via [AUR](https://aur.archlinux.org/packages/cfddns/).
+Install `cfddns` from [AUR](https://aur.archlinux.org/packages/cfddns/).
 
 ```bash
-git clone https://aur.archlinux.org/cfddns.git && cd cfddns
-makepkg -si
-# or just `yay -S cfddns`
+yay -S cfddns
+```
 
-cat << EOD > /etc/cfddns/domains
-example.com
-mail.example.com
-example.org
-EOD
-
-vim /etc/cfddns/cfddns.yml # assign `token`
+```bash
+vim /etc/cfddns/cfddns.yml # replace `token` value with yours
+vim /etc/cfddns/domains
 
 systemctl enable --now cfddns
 ```
 
-### pip
+### Cargo
 
 ```
-pip install cfddns
+cargo install cfddns
 ```
 
 ### Build from source
 
 ```bash
 git clone https://github.com/uetchy/cfddns.git && cd cfddns
-poetry install --build
+cargo build --release
+cp target/release/cfddns /usr/local/bin
 ```
+
+## Contribute
+
+### Tasks
+
+- Report a bug
+- Create and maintain `cfddns` package for your favorite Linux distribution
