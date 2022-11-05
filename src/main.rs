@@ -279,7 +279,7 @@ fn split_hostname(name: &str) -> Option<(String, String)> {
 }
 
 async fn get_global_ipv4_addr(endpoint: &str) -> Result<Ipv4Addr> {
-    let body = reqwest::get(endpoint).await?.text().await?;
+    let body = reqwest::get(endpoint).await?.text().await?.trim();
     match Ipv4Addr::from_str(&body) {
         Ok(res) => Ok(res),
         Err(err) => bail!(err),
